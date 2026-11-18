@@ -1,0 +1,12 @@
+venv/
+_venv/
+.idea/
+_idea/
+__pycache__/
+*.pyc
+notebook_runs/
+.env
+
+
+data/archive/
+data/archive.zip
