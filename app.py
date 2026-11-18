@@ -105,17 +105,17 @@ if page == PAGES[0]:
     for col, (l, v) in zip(c, [("Road nodes", net.N), ("Road segments", len(net.edges)), ("Charging stations", len(stations["node"])), (f"Mean speed {S['dep']}", f"{snap.v_node.mean():.0f} km/h"),
                                ("Mean congestion idx", f"{snap.cong.mean():.2f}"), ("Ports in service", f"{ports_up.sum()}/{stations['ports'].sum()}")]): col.metric(l, v)
     a, b = st.columns([3, 2])
-    with a: st.plotly_chart(network_fig(snap, stops=[(S["src"], "Origin", "#2a9d8f"), (S["dst"], "Dest", "#8e44ad")], title=f"Traffic conditions at {S['dep']}"), use_container_width=True)
+    with a: st.plotly_chart(network_fig(snap, stops=[(S["src"], "Origin", "#2a9d8f"), (S["dst"], "Dest", "#8e44ad")], title=f"Traffic conditions at {S['dep']}"), width="stretch")
     with b:
         hrs = np.arange(288) / 12; pr = net.profile_kmh; f = go.Figure()
         f.add_trace(go.Scatter(x=hrs, y=np.percentile(pr, 90, axis=1), line=dict(width=0), showlegend=False)); f.add_trace(go.Scatter(x=hrs, y=np.percentile(pr, 10, axis=1), fill="tonexty", line=dict(width=0), name="10–90 % sensors"))
         f.add_trace(go.Scatter(x=hrs, y=pr.mean(1), name="mean speed", line=dict(width=3))); hh = int(S["dep"][:2]) + int(S["dep"][3:5]) / 60; f.add_vline(x=hh, line_dash="dash", line_color="#d1495b", annotation_text="departure")
-        f.update_layout(height=250, margin=dict(l=0, r=0, t=25, b=0), title="Typical weekday speed (km/h)"); st.plotly_chart(f, use_container_width=True)
+        f.update_layout(height=250, margin=dict(l=0, r=0, t=25, b=0), title="Typical weekday speed (km/h)"); st.plotly_chart(f, width="stretch")
         w, _ = __import__("engine.charging", fromlist=["station_waits"]).station_waits(stations, ports_up, snap, S["session"])
-        f = go.Figure(go.Bar(x=list(range(len(w))), y=w, marker_color="#3a6ea5")); f.update_layout(height=220, margin=dict(l=0, r=0, t=25, b=0), title="Expected queue wait per station (min, Erlang-C)", xaxis_title="station"); st.plotly_chart(f, use_container_width=True)
+        f = go.Figure(go.Bar(x=list(range(len(w))), y=w, marker_color="#3a6ea5")); f.update_layout(height=220, margin=dict(l=0, r=0, t=25, b=0), title="Expected queue wait per station (min, Erlang-C)", xaxis_title="station"); st.plotly_chart(f, width="stretch")
     st.subheader("System performance (last optimization run)")
     if run:
-        st.dataframe(pd.DataFrame([dict(method=m, front_size=len(r["front"]), best_dist_km=min(x[0] for x in r["front"]) if r["front"] else None, best_delay_min=min(x[1] for x in r["front"]) if r["front"] else None, evals=r["evals"], time_s=round(r["time"], 2)) for m, r in run["results"].items()]), hide_index=True, use_container_width=True)
+        st.dataframe(pd.DataFrame([dict(method=m, front_size=len(r["front"]), best_dist_km=min(x[0] for x in r["front"]) if r["front"] else None, best_delay_min=min(x[1] for x in r["front"]) if r["front"] else None, evals=r["evals"], time_s=round(r["time"], 2)) for m, r in run["results"].items()]), hide_index=True, width="stretch")
     else: st.info("No optimization yet – configure a trip (page 2) and run the engine (page 3).")
 
 # ================================================================ 2 TRIP CONFIG
@@ -140,12 +140,12 @@ elif page == PAGES[1]:
     st.info("Settings are applied on the next interaction; the summary below reflects the current values.")
     if S["av_mode"] == "manual":
         df = pd.DataFrame(dict(station=range(len(stations["node"])), node=stations["node"], power_kw=stations["power"], ports=stations["ports"], ports_in_service=(S["manual"] if S["manual"] and len(S["manual"]) == len(stations["node"]) else stations["ports"].tolist())))
-        ed = st.data_editor(df, disabled=["station", "node", "power_kw", "ports"], hide_index=True, use_container_width=True); S["manual"] = ed["ports_in_service"].clip(0, ed["ports"]).tolist()
+        ed = st.data_editor(df, disabled=["station", "node", "power_kw", "ports"], hide_index=True, width="stretch"); S["manual"] = ed["ports_in_service"].clip(0, ed["ports"]).tolist()
     d_km, d_kwh = snap.D[S["src"], S["dst"]], snap.E[S["src"], S["dst"]]
     m = st.columns(4); m[0].metric("Direct distance", f"{d_km:.0f} km"); m[1].metric("Direct energy need", f"{d_kwh:.1f} kWh"); m[2].metric("Usable battery now", f"{soc0 - cfg.reserve:.1f} kWh")
     m[3].metric("Charging required?", "Yes" if soc0 - d_kwh < cfg.reserve else "No")
     if S["src"] == S["dst"]: st.error("Origin and destination must differ.")
-    st.plotly_chart(network_fig(snap, paths=[(snap.path(S["src"], S["dst"]), "#3a6ea5", "direct shortest path", "dash")] if S["src"] != S["dst"] else [], stops=[(S["src"], "Origin", "#2a9d8f"), (S["dst"], "Dest", "#8e44ad")], height=450), use_container_width=True)
+    st.plotly_chart(network_fig(snap, paths=[(snap.path(S["src"], S["dst"]), "#3a6ea5", "direct shortest path", "dash")] if S["src"] != S["dst"] else [], stops=[(S["src"], "Origin", "#2a9d8f"), (S["dst"], "Dest", "#8e44ad")], height=450), width="stretch")
 
 # ================================================================ 3 OPTIMIZATION ENGINE
 elif page == PAGES[2]:
@@ -165,8 +165,8 @@ elif page == PAGES[2]:
         st.success("Finished – open **4 · Results & Route Analysis**.")
     run = st.session_state.get("run")
     if run:
-        st.subheader("Latest run"); st.plotly_chart(front_fig(run["results"]), use_container_width=True)
-        st.dataframe(pd.DataFrame([dict(method=m, solutions=len(r["front"]), best_dist_km=min((x[0] for x in r["front"]), default=None), best_delay_min=min((x[1] for x in r["front"]), default=None), evals=r["evals"], time_s=round(r["time"], 2), reached_destination=len(r["front"]) > 0) for m, r in run["results"].items()]), hide_index=True, use_container_width=True)
+        st.subheader("Latest run"); st.plotly_chart(front_fig(run["results"]), width="stretch")
+        st.dataframe(pd.DataFrame([dict(method=m, solutions=len(r["front"]), best_dist_km=min((x[0] for x in r["front"]), default=None), best_delay_min=min((x[1] for x in r["front"]), default=None), evals=r["evals"], time_s=round(r["time"], 2), reached_destination=len(r["front"]) > 0) for m, r in run["results"].items()]), hide_index=True, width="stretch")
         if any(len(r["front"]) == 0 for r in run["results"].values()): st.warning("A method without solutions could not reach the destination within the allowed stops/battery.")
 
 # ================================================================ 4 RESULTS
@@ -194,14 +194,14 @@ elif page == PAGES[3]:
             marks = [(P.src, "Origin", "#2a9d8f"), (P.dst, "Dest", "#8e44ad")] + [(s["node"], f"S{i + 1} → {P.LEVELS[sol[i][1]] * 100:.0f}%", "#d1495b") for i, s in enumerate(d["stops"])]
             a, b = st.columns(2)
             with a:
-                st.plotly_chart(front_fig({m: run["results"][m]}, selected=(pl["front"]["distance_km"][idx], pl["front"]["delay_min"][idx]), height=360), use_container_width=True)
-                st.plotly_chart(network_fig(sn, paths + [(sn.path(P.src, P.dst), "#3a6ea5", "direct (infeasible)", "dash")], marks, height=420), use_container_width=True)
+                st.plotly_chart(front_fig({m: run["results"][m]}, selected=(pl["front"]["distance_km"][idx], pl["front"]["delay_min"][idx]), height=360), width="stretch")
+                st.plotly_chart(network_fig(sn, paths + [(sn.path(P.src, P.dst), "#3a6ea5", "direct (infeasible)", "dash")], marks, height=420), width="stretch")
             with b:
                 f = go.Figure(go.Scatter(x=d["soc_x"], y=d["soc_y"], mode="lines+markers", name="SoC", line=dict(color="#2a9d8f", width=3)))
                 f.add_hline(y=cfg.reserve, line_dash="dash", line_color="#d1495b", annotation_text="reserve"); f.add_hline(y=cfg.cap, line_dash="dot", annotation_text="capacity")
-                f.update_layout(height=300, title="State of charge along route (vertical jumps = charging)", xaxis_title="distance (km)", yaxis_title="kWh", margin=dict(l=0, r=0, t=40, b=0)); st.plotly_chart(f, use_container_width=True)
-                f = go.Figure([go.Bar(x=[v], y=["time"], orientation="h", name=l, marker_color=c) for l, v, c in [("driving", d["drive_min"], "#3a6ea5"), ("waiting", d["wait_min"], "#f29e4c"), ("charging", d["charge_min"], "#2a9d8f")]]); f.update_layout(barmode="stack", height=130, title="Trip time breakdown (min)", margin=dict(l=0, r=0, t=40, b=0)); st.plotly_chart(f, use_container_width=True)
-                if d["stops"]: st.dataframe(pd.DataFrame([dict(stop=f"S{i + 1}", station=s["station"], node=s["node"], power_kw=s["power_kw"], ports_up=f"{s['ports_up']}/{s['ports_total']}", arrive_soc_kwh=round(s["arrive_soc"], 1), charge_to_kwh=round(s["charge_to"], 1), wait_min=round(s["wait_min"], 1), charge_min=round(s["charge_min"], 1)) for i, s in enumerate(d["stops"])]), hide_index=True, use_container_width=True)
+                f.update_layout(height=300, title="State of charge along route (vertical jumps = charging)", xaxis_title="distance (km)", yaxis_title="kWh", margin=dict(l=0, r=0, t=40, b=0)); st.plotly_chart(f, width="stretch")
+                f = go.Figure([go.Bar(x=[v], y=["time"], orientation="h", name=l, marker_color=c) for l, v, c in [("driving", d["drive_min"], "#3a6ea5"), ("waiting", d["wait_min"], "#f29e4c"), ("charging", d["charge_min"], "#2a9d8f")]]); f.update_layout(barmode="stack", height=130, title="Trip time breakdown (min)", margin=dict(l=0, r=0, t=40, b=0)); st.plotly_chart(f, width="stretch")
+                if d["stops"]: st.dataframe(pd.DataFrame([dict(stop=f"S{i + 1}", station=s["station"], node=s["node"], power_kw=s["power_kw"], ports_up=f"{s['ports_up']}/{s['ports_total']}", arrive_soc_kwh=round(s["arrive_soc"], 1), charge_to_kwh=round(s["charge_to"], 1), wait_min=round(s["wait_min"], 1), charge_min=round(s["charge_min"], 1)) for i, s in enumerate(d["stops"])]), hide_index=True, width="stretch")
                 else: st.success("No charging stop needed for this solution.")
             st.subheader("Reactive baselines on the same problem")
             rows = []
@@ -211,7 +211,7 @@ elif page == PAGES[3]:
                 if g is None: rows.append(dict(strategy=nm, distance_km=None, delay_min=None, note="cannot reach destination")); continue
                 f1, f2, _, _ = P.eval_raw(g); dom = any(x <= f1 + 1e-9 and y <= f2 + 1e-9 for x, y in zip(pl["front"]["distance_km"], pl["front"]["delay_min"]))
                 rows.append(dict(strategy=nm, distance_km=round(f1, 1), delay_min=round(f2, 1), note="dominated by the optimised front" if dom else "not dominated"))
-            st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
+            st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
 
 # ================================================================ 5 ALGORITHM PERFORMANCE
 else:
@@ -228,18 +228,18 @@ else:
     if B:
         df = pd.DataFrame(B["records"]); st.caption(("Exact" if B["exact"] else "Pooled non-dominated") + f" reference front: {len(B['ref_front'])} points")
         g = df.groupby("method").agg(HV_ratio=("hv_ratio", "mean"), HV_sd=("hv_ratio", "std"), front_size=("front_size", "mean"), best_dist_km=("best_dist_km", "mean"), best_delay_min=("best_delay_min", "mean"), time_s=("time_s", "mean"), solved=("solved", "mean")).round(3).sort_values("HV_ratio", ascending=False)
-        st.dataframe(g, use_container_width=True)
+        st.dataframe(g, width="stretch")
         a, b = st.columns(2)
         with a:
-            f = go.Figure([go.Box(y=df[df.method == m].hv_ratio, name=m, marker_color=COL.get(m), boxmean=True) for m in g.index]); f.update_layout(height=380, title="Pareto-front quality (HV ratio)", showlegend=False, margin=dict(l=0, r=0, t=40, b=0)); st.plotly_chart(f, use_container_width=True)
-            f = go.Figure(go.Bar(x=g.index, y=g.time_s, marker_color=[COL.get(m) for m in g.index])); f.update_layout(height=300, title="Mean runtime (s)", margin=dict(l=0, r=0, t=40, b=0)); st.plotly_chart(f, use_container_width=True)
+            f = go.Figure([go.Box(y=df[df.method == m].hv_ratio, name=m, marker_color=COL.get(m), boxmean=True) for m in g.index]); f.update_layout(height=380, title="Pareto-front quality (HV ratio)", showlegend=False, margin=dict(l=0, r=0, t=40, b=0)); st.plotly_chart(f, width="stretch")
+            f = go.Figure(go.Bar(x=g.index, y=g.time_s, marker_color=[COL.get(m) for m in g.index])); f.update_layout(height=300, title="Mean runtime (s)", margin=dict(l=0, r=0, t=40, b=0)); st.plotly_chart(f, width="stretch")
         with b:
             f = go.Figure()
             for m, cs in B["curves"].items():
                 if not cs: continue
                 n = min(len(c) for c in cs); f.add_trace(go.Scatter(x=[p[0] for p in cs[0][:n]], y=np.mean([[p[1] for p in c[:n]] for c in cs], 0), name=m, line=dict(color=COL.get(m), width=4 if "proposed" in m else 2)))
-            f.update_layout(height=380, title="Convergence (mean HV ratio vs evaluations)", xaxis_title="objective evaluations", margin=dict(l=0, r=0, t=40, b=0)); st.plotly_chart(f, use_container_width=True)
+            f.update_layout(height=380, title="Convergence (mean HV ratio vs evaluations)", xaxis_title="objective evaluations", margin=dict(l=0, r=0, t=40, b=0)); st.plotly_chart(f, width="stretch")
             items = {m: rs[0] for m, rs in B["runs"].items()}
             if len(B["ref_front"]): items = {"Reference front": dict(front=[(x, y, None) for x, y in B["ref_front"]]), **items}; COL["Reference front"] = "#222222"
-            st.plotly_chart(front_fig(items, height=300), use_container_width=True)
+            st.plotly_chart(front_fig(items, height=300), width="stretch")
         if "FA-TS (proposed)" in g.index and len(g) > 1: st.info(f"FA-TS mean HV ratio {g.loc['FA-TS (proposed)', 'HV_ratio']:.3f}; best method: **{g.index[0]}**. Use several scenarios and ≥ 8 seeds (see the notebook) before drawing conclusions.")
